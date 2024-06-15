@@ -52,9 +52,14 @@ int main() {
         generate(row.begin(), row.end(), []() {return rand() % 10 == 0 ? 1:0;});
     }
 
-    //The game loop
-    while(true) {
+    Uint32 start_time, frame_time;
+    float fps, avg_fps = 0;
+    int iter = 0;
 
+    //The game loop
+    while(iter < 100) {
+        
+        start_time = SDL_GetTicks();
         //Finding the next gamestate from the previous gamestate
         for(int i = 0; i < GAME_WIDTH; i++) {
             for(int k = 0; k < GAME_HEIGHT; k++) {
@@ -76,9 +81,15 @@ int main() {
 
         //Display to the screen
         screen.update();
-        SDL_Delay(20);
+        //SDL_Delay(20);
         screen.input();
         screen.clearpixels();
-        //
+        
+        //Calculating and printing fps
+        frame_time = SDL_GetTicks()-start_time;
+        fps = (frame_time > 0) ? 1000.0f / frame_time : 0.0f;
+        iter++;
+        avg_fps = (avg_fps*iter + fps)/(iter+1);
     }
+    cout << avg_fps << endl;
 }
