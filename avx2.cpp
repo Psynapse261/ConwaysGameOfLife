@@ -1,9 +1,10 @@
 #include "screen.h"
+#include <immintrin.h> // for AVX, AVX2, AVX-512
 
 using namespace std;
 
-const int GAME_WIDTH = 640;
-const int GAME_HEIGHT = 480;
+const int GAME_WIDTH = 1280;
+const int GAME_HEIGHT = 720;
 
 bool isAlive(array<array<int, GAME_HEIGHT>, GAME_WIDTH> &game, const int x, const int y) {
     //Tracker for number of neighbouring cells alive for a given cell
@@ -14,17 +15,17 @@ bool isAlive(array<array<int, GAME_HEIGHT>, GAME_WIDTH> &game, const int x, cons
     //Testing right cell
     if(x < GAME_WIDTH && game[x+1][y] == 1) alive += 1;
     //Testing lower cell
-    if(x < GAME_WIDTH && game[x][y+1] == 1) alive += 1;
+    if(y < GAME_HEIGHT && game[x][y+1] == 1) alive += 1;
     //Testing upper cell
-    if(x < GAME_WIDTH && game[x][y-1] == 1) alive += 1;
+    if(y > 0 && game[x][y-1] == 1) alive += 1;
     //Testing top left cell
-    if(x < GAME_WIDTH && game[x-1][y-1] == 1) alive += 1;
+    if(x > 0 && y > 0 && game[x-1][y-1] == 1) alive += 1;
     //Testing top right cell
-    if(x < GAME_WIDTH && game[x+1][y-1] == 1) alive += 1;
+    if(x < GAME_WIDTH && y > 0 && game[x+1][y-1] == 1) alive += 1;
     //Testing bottom left cell
-    if(x < GAME_WIDTH && game[x-1][y+1] == 1) alive += 1;
+    if(x > 0 && y < GAME_HEIGHT && game[x-1][y+1] == 1) alive += 1;
     //Testing bottom right cell
-    if(x < GAME_WIDTH && game[x+1][y+1] == 1) alive += 1;
+    if(x < GAME_WIDTH && y < GAME_HEIGHT && game[x+1][y+1] == 1) alive += 1;
 
     //Enforcing the rule to see if current cell is alive or not
     //Rule 1: if cell is alive and has less than 2 alive neighbours, it dies
