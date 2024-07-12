@@ -7,8 +7,8 @@
 
 using namespace std;
 
-const int GAME_WIDTH = 1280;
-const int GAME_HEIGHT = 720;
+const int GAME_WIDTH = 1024;
+const int GAME_HEIGHT = 1024;
 
 bool isAlive(array<array<int, GAME_HEIGHT>, GAME_WIDTH> &game, const int x, const int y) {
     //Tracker for number of neighbouring cells alive for a given cell

@@ -6,8 +6,8 @@
 
 using namespace std;
 
-const int GAME_WIDTH = 1280;
-const int GAME_HEIGHT = 720;
+const int GAME_WIDTH = 1024;
+const int GAME_HEIGHT = 1024;
 
 bool isAlive(array<array<uint8_t, GAME_HEIGHT>, GAME_WIDTH> &game, const int x, const int y) {
     
@@ -61,90 +61,22 @@ int main() {
         array<array<uint8_t, GAME_HEIGHT>, GAME_WIDTH> swap {};
 
         /* start_time = SDL_GetTicks(); */
-        // ------------  Finding the next gamestate from the previous gamestate ---------- //
-            // Not including the borders
-            for(int i = 1; i < GAME_WIDTH - 1; i++) {
-                for(int k = 1; k < GAME_HEIGHT - 1; k++) {
-                    if(isAlive(display, i, k)){
-                        swap[i][k] += 128;
-                        swap[i+1][k]++;
-                        swap[i-1][k]++;
-                        swap[i][k-1]++;
-                        swap[i][k+1]++;
-                        swap[i+1][k+1]++;
-                        swap[i-1][k+1]++;
-                        swap[i+1][k-1]++;
-                        swap[i-1][k-1]++;
-                    }
+        //Finding the next gamestate from the previous gamestate
+        for(int i = 0; i < GAME_WIDTH; i++) {
+            for(int k = 0; k < GAME_HEIGHT; k++) {
+                if(isAlive(display, i, k)){
+                    swap[i][k] += 128;
+                    if(i+1 < GAME_WIDTH) swap[i+1][k]++;
+                    if(i > 0) swap[i-1][k]++;
+                    if(k > 0) swap[i][k-1]++;
+                    if(k+1 < GAME_HEIGHT) swap[i][k+1]++;
+                    if(k+1 < GAME_HEIGHT && i < GAME_WIDTH)swap[i+1][k+1]++;
+                    if(i > 0 && k+1 < GAME_HEIGHT) swap[i-1][k+1]++;
+                    if(i+1<GAME_HEIGHT && k>0) swap[i+1][k-1]++;
+                    if(i>0 && k>0) swap[i-1][k-1]++;
                 }
             }
-            // The vertical edges without corners
-            for(int i = 1; i < GAME_WIDTH - 1; i++) {
-                //Upper edge (k = 0)
-                if(isAlive(display, i, 0)) {
-                    swap[i][0] += 128;
-                    swap[i+1][0]++;
-                    swap[i-1][0]++;
-                    swap[i][1]++;
-                    swap[i+1][1]++;
-                    swap[i-1][1]++;
-                }
-                //Lower edge (k = GAME_HEIGHT - 1)
-                if(isAlive(display, i, GAME_HEIGHT - 1)) {
-                    swap[i][GAME_HEIGHT - 1] += 128;
-                    swap[i+1][GAME_HEIGHT - 1]++;
-                    swap[i-1][GAME_HEIGHT - 1]++;
-                    swap[i][GAME_HEIGHT - 2]++;
-                    swap[i+1][GAME_HEIGHT - 2]++;
-                    swap[i-1][GAME_HEIGHT - 2]++;
-                }
-            }
-            // The horizontal edges without corners
-            for(int k = 1; k < GAME_HEIGHT - 1; k++) {
-                //Left edge (i = 0)
-                if(isAlive(display, k, 0)) {
-                    swap[0][k] += 128;
-                    swap[0][k + 1]++;
-                    swap[0][k - 1]++;
-                    swap[1][k]++;
-                    swap[1][k + 1]++;
-                    swap[1][k - 1]++;
-                }
-                //Right edge (i = GAME_WIDTH - 1)
-                if(isAlive(display, k, GAME_HEIGHT - 1)) {
-                    swap[GAME_WIDTH - 1][k] += 128;
-                    swap[GAME_WIDTH - 1][k + 1]++;
-                    swap[GAME_WIDTH - 1][k - 1]++;
-                    swap[GAME_WIDTH - 2][k]++;
-                    swap[GAME_WIDTH - 2][k + 1]++;
-                    swap[GAME_WIDTH - 2][k - 1]++;
-                }
-            }
-            // The four corners
-            if(isAlive(display,0,0)) {
-                swap[0][0] += 128;
-                swap[1][0]++;
-                swap[0][1]++;
-                swap[1][1]++;
-            }
-            if(isAlive(display,GAME_WIDTH - 1,0)) {
-                swap[GAME_WIDTH - 1][0] += 128;
-                swap[GAME_WIDTH - 2][0]++;
-                swap[GAME_WIDTH - 1][1]++;
-                swap[GAME_WIDTH - 2][1]++;
-            }
-            if(isAlive(display,0,GAME_HEIGHT - 1)) {
-                swap[0][GAME_HEIGHT - 1] += 128;
-                swap[1][GAME_HEIGHT - 1]++;
-                swap[0][GAME_HEIGHT - 2]++;
-                swap[1][GAME_HEIGHT - 2]++;
-            }
-            if(isAlive(display,GAME_WIDTH - 1,GAME_HEIGHT - 1)) {
-                swap[GAME_WIDTH - 1][GAME_HEIGHT - 1] += 128;
-                swap[GAME_WIDTH - 2][GAME_HEIGHT - 1]++;
-                swap[GAME_WIDTH - 1][GAME_HEIGHT - 2]++;
-                swap[GAME_WIDTH - 2][GAME_HEIGHT - 2]++;
-            }
+        }
 
         /* //Drawing the game state
         for(int i = 0; i < GAME_WIDTH; i++) {
@@ -156,7 +88,7 @@ int main() {
         } */
 
         //Swapping buffers
-        copy(swap.begin(), swap.end(), display.begin());
+        //copy(swap.begin(), swap.end(), display.begin());
 
         /* //Display to the screen
         screen.update();

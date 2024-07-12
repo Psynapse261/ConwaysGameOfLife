@@ -1,96 +1,141 @@
-#include "screen.h"
+#include <array>
+#include <cstdint>
+#include <cstdlib>
+#include <algorithm>
 #include <immintrin.h> // for AVX, AVX2, AVX-512
+#include <iostream>
+//#include "screen.h"
 
 using namespace std;
 
-const int GAME_WIDTH = 1280;
-const int GAME_HEIGHT = 720;
+const int GAME_WIDTH = 32;
+const int GAME_HEIGHT = 32;
 
-bool isAlive(array<array<int, GAME_HEIGHT>, GAME_WIDTH> &game, const int x, const int y) {
-    //Tracker for number of neighbouring cells alive for a given cell
-    int alive = 0;
+__m256i isAlive_AVX(__m256i cells) {
     
-    //Testing the left cell, only if current cell is not leftmost (x = 0)
-    if(x > 0 && game[x-1][y] == 1) alive += 1;
-    //Testing right cell
-    if(x < GAME_WIDTH && game[x+1][y] == 1) alive += 1;
-    //Testing lower cell
-    if(y < GAME_HEIGHT && game[x][y+1] == 1) alive += 1;
-    //Testing upper cell
-    if(y > 0 && game[x][y-1] == 1) alive += 1;
-    //Testing top left cell
-    if(x > 0 && y > 0 && game[x-1][y-1] == 1) alive += 1;
-    //Testing top right cell
-    if(x < GAME_WIDTH && y > 0 && game[x+1][y-1] == 1) alive += 1;
-    //Testing bottom left cell
-    if(x > 0 && y < GAME_HEIGHT && game[x-1][y+1] == 1) alive += 1;
-    //Testing bottom right cell
-    if(x < GAME_WIDTH && y < GAME_HEIGHT && game[x+1][y+1] == 1) alive += 1;
+    //Setting the return register
+    __m256i result = _mm256_set1_epi8(0x00);
+    //Whatever is alive, set it to alive in the result
+    __m256i condition = _mm256_set1_epi8(0x88);
+    result = _mm256_cmpgt_epi8(cells, condition);
+    __m256i ones = _mm256_set1_epi8(0xFF);
+    result = _mm256_xor_si256(result, ones);
 
-    //Enforcing the rule to see if current cell is alive or not
-    //Rule 1: if cell is alive and has less than 2 alive neighbours, it dies
-    if(game[x][y] == 1 && alive < 2) return false;
-    //Rule 2: if cell is alive and 2 or 3 neighbours are alive, cell lives
-    if(game[x][y] == 1 && (alive == 2 || alive == 3)) return true;
-    //Rule 3: if a cell has more than 3 neighbours, cell dies
-    if(alive > 3) return false;
-    //Rule 4: if 3 neighbours are alive and point is dead, it comes to life
-    if(game[x][y] == 0 && alive == 3) return true;
+    //Remove the alive state from the registers
+    condition = _mm256_set1_epi8(128);
+    condition = _mm256_and_si256(condition, result);
+    cells = _mm256_sub_epi8(cells, condition);
 
-    //default return false
-    return false;
+    //Whatever has less than 2 neighbours dies
+    condition = _mm256_set1_epi8(1);
+    __m256i mask = _mm256_cmpgt_epi8(cells, condition);
+    result = _mm256_and_si256(result, mask);
+
+    //Anything greater than 3 neighbours dies
+    condition = _mm256_set1_epi8(3);
+    mask = _mm256_cmpgt_epi8(cells, condition);
+    mask = _mm256_xor_si256(mask, ones);
+    result = _mm256_and_si256(result, mask);
+
+    //Anything with exactly 3 neighbors lives
+    mask = _mm256_cmpeq_epi8(cells, condition);
+    result = _mm256_or_si256(result, mask);
+
+    /* //D3ebug
+    alignas(32) uint8_t print[32];
+    _mm256_store_si256(reinterpret_cast<__m256i*>(print), result);
+    std::cout << "Cells: ";
+    for(int i = 0; i < 18; i++) {
+        std::cout << static_cast<int>(print[i]) << " ";
+    }
+    std::cout << std::endl; */
+    return result;
 }
 
 
 int main() {
     //Setup
-    G screen;
-    array<array<int, GAME_HEIGHT>, GAME_WIDTH> display {};
-    array<array<int, GAME_HEIGHT>, GAME_WIDTH> swap {};
+    //G screen;
+    alignas(32) array<array<uint8_t, GAME_HEIGHT>, GAME_WIDTH> display {};
 
     //Creating a random array of starter points
-    for(auto& row:display) {
-        generate(row.begin(), row.end(), []() {return rand() % 10 == 0 ? 1:0;});
+    for(int i = 0; i < GAME_WIDTH; i++) {
+        for(int k = 0; k < GAME_HEIGHT; k++) {
+            if(rand() % 10 == 0) {
+                display[i][k] += 128;
+                if(i+1 < GAME_WIDTH) display[i+1][k]++;
+                if(i > 0) display[i-1][k]++;
+                if(k > 0) display[i][k-1]++;
+                if(k+1 < GAME_HEIGHT) display[i][k+1]++;
+                if(k+1 < GAME_HEIGHT && i < GAME_WIDTH)display[i+1][k+1]++;
+                if(i > 0 && k+1 < GAME_HEIGHT) display[i-1][k+1]++;
+                if(i+1<GAME_HEIGHT && k>0) display[i+1][k-1]++;
+                if(i>0 && k>0) display[i-1][k-1]++;
+            }
+        };
     }
 
-    Uint32 start_time, frame_time;
-    float fps, avg_fps = 0;
+    /* Uint32 start_time, frame_time;
+    float fps, avg_fps = 0; */
     int iter = 0;
 
     //The game loop
-    while(iter < 100) {
-        
-        start_time = SDL_GetTicks();
-        //Finding the next gamestate from the previous gamestate
-        for(int i = 0; i < GAME_WIDTH; i++) {
-            for(int k = 0; k < GAME_HEIGHT; k++) {
-                swap[i][k] = isAlive(display, i, k) ? 1:0;
-            }
-        }
+    while(iter < 1000) {
+        alignas(32) array<array<uint8_t, GAME_HEIGHT>, GAME_WIDTH> swap {};
 
-        //Drawing the game state
-        for(int i = 0; i < GAME_WIDTH; i++) {
+        /* start_time = SDL_GetTicks(); */
+        //Finding the next gamestate from the previous gamestate
+        for(int i = 0; i < GAME_WIDTH; i = i + 32) {
             for(int k = 0; k < GAME_HEIGHT; k++) {
-                if(swap[i][k] == 1) {
-                    screen.drawpixel(i,k);
+                // Doing AVX magic
+                uint8_t result[32];
+                __m256i my_cells = _mm256_load_si256(reinterpret_cast<__m256i*>(&display[i][k]));
+                __m256i is_alive = isAlive_AVX(my_cells);
+                _mm256_store_si256(reinterpret_cast<__m256i*>(result), is_alive);
+                
+                //Setting the new array values
+                for(int cell = 0; cell < 32; cell++) {
+                    cout << i + cell << endl;
+                    if(result[cell] > 1) {
+                    int i_new = i + cell;
+                    swap[i + cell][k] += 128;
+                    if(i_new+1 < GAME_WIDTH) swap[i_new+1][k]++;
+                    if(i_new > 0) swap[i_new-1][k]++;
+                    if(k > 0) swap[i_new][k-1]++;
+                    if(k+1 < GAME_HEIGHT) swap[i_new][k+1]++;
+                    if(k+1 < GAME_HEIGHT && i_new < GAME_WIDTH)swap[i_new+1][k+1]++;
+                    if(i_new > 0 && k+1 < GAME_HEIGHT) swap[i_new-1][k+1]++;
+                    if(i_new+1<GAME_HEIGHT && k>0) swap[i_new+1][k-1]++;
+                    if(i_new>0 && k>0) swap[i_new-1][k-1]++;
+                }
                 }
             }
         }
 
-        //Swapping buffers
-        copy(swap.begin(), swap.end(), display.begin());
+        /* //Drawing the game state
+        for(int i = 0; i < GAME_WIDTH; i++) {
+            for(int k = 0; k < GAME_HEIGHT; k++) {
+                if(swap[i][k] >= 128) {
+                    screen.drawpixel(i,k);
+                }
+            }
+        } */
 
-        //Display to the screen
+        //Swapping buffers
+        //copy(swap.begin(), swap.end(), display.begin());
+
+        /* //Display to the screen
         screen.update();
         //SDL_Delay(20);
         screen.input();
-        screen.clearpixels();
+        screen.clearpixels(); */
         
-        //Calculating and printing fps
+        /* //Calculating and printing fps
         frame_time = SDL_GetTicks()-start_time;
         fps = (frame_time > 0) ? 1000.0f / frame_time : 0.0f;
+        avg_fps = (avg_fps*iter + fps)/(iter+1); */
+        //std::cout << iter << endl;
         iter++;
-        avg_fps = (avg_fps*iter + fps)/(iter+1);
     }
-    cout << avg_fps << endl;
+    /* std::cout << avg_fps << endl; */
 }
